@@ -49,17 +49,21 @@ class NotificationManager {
             requireInteraction: true,
             tag: 'productivity-pulse',
             renotify: true,
+            timestamp: Date.now(), // Helps with sorting
             ...options
         };
 
         try {
-            // Try to use service worker notification first (more reliable)
-            if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+            // ALWAYS try to use Service Worker notification if available
+            // This is required for Android background notifications
+            if ('serviceWorker' in navigator) {
                 const registration = await navigator.serviceWorker.ready;
+                console.log('Using Service Worker for notification');
                 await registration.showNotification(title, defaultOptions);
                 return true;
             } else {
-                // Fallback to regular notification
+                // Fallback only for browsers without SW support
+                console.log('Service Worker not found using legacy Notification API');
                 const notification = new Notification(title, defaultOptions);
 
                 notification.onclick = () => {
@@ -74,7 +78,12 @@ class NotificationManager {
             }
         } catch (error) {
             console.error('Error showing notification:', error);
-            return null;
+            // Last resort fallback
+            try {
+                return new Notification(title, defaultOptions);
+            } catch (e) {
+                return null;
+            }
         }
     }
 
